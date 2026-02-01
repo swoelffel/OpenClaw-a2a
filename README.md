@@ -1,14 +1,53 @@
 # OpenClaw A2A Protocol Extension
 
-Extension OpenClaw pour la communication agent-to-agent via le protocole A2A (Google).
+OpenClaw extension for agent-to-agent communication using the Google A2A Protocol.
 
 ## Installation
 
-L'extension est automatiquement chargée avec OpenClaw si elle est activée dans la configuration.
+### Prerequisites
+
+- Node.js 22+ (same as OpenClaw)
+- pnpm package manager
+- OpenClaw installed and configured
+
+### Install as OpenClaw Extension
+
+1. **Clone the extension** into your OpenClaw extensions directory:
+
+```bash
+cd /path/to/openclaw/extensions
+git clone https://github.com/swoelffel/OpenClaw-a2a.git a2a
+```
+
+2. **Install dependencies**:
+
+```bash
+cd a2a
+pnpm install
+```
+
+3. **Enable the extension** in your OpenClaw configuration (see Configuration section below).
+
+4. **Restart OpenClaw gateway**:
+
+```bash
+openclaw gateway restart
+```
+
+### Verify Installation
+
+Check that the A2A endpoint is available:
+
+```bash
+# Get AgentCard
+curl http://localhost:18789/.well-known/agent.json
+
+# Should return JSON with agent information
+```
 
 ## Configuration
 
-Dans votre configuration OpenClaw (`~/.openclaw/config.json` ou via l'interface UI) :
+Add to your OpenClaw configuration (`~/.openclaw/config.json` or via UI):
 
 ```json
 {
@@ -31,28 +70,28 @@ Dans votre configuration OpenClaw (`~/.openclaw/config.json` ou via l'interface 
 }
 ```
 
-### Options de configuration
+### Configuration Options
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `enabled` | boolean | Activer/désactiver l'extension A2A |
-| `port` | integer | Port pour le serveur A2A (0 = même que gateway) |
-| `authToken` | string | Token Bearer pour l'authentification (optionnel) |
-| `agentName` | string | Nom de l'agent affiché dans l'AgentCard |
-| `agentDescription` | string | Description de l'agent |
-| `skills` | array | Liste des skills exposés via A2A |
+| `enabled` | boolean | Enable/disable the A2A extension |
+| `port` | integer | Port for A2A server (0 = same as gateway) |
+| `authToken` | string | Bearer token for authentication (optional) |
+| `agentName` | string | Agent name displayed in AgentCard |
+| `agentDescription` | string | Agent description |
+| `skills` | array | List of skills exposed via A2A |
 
 ## Endpoints
 
-L'extension expose les endpoints suivants sur le gateway OpenClaw :
+The extension exposes the following endpoints on the OpenClaw gateway:
 
-### AgentCard (Découverte)
+### AgentCard (Discovery)
 
 ```
 GET /.well-known/agent.json
 ```
 
-Réponse :
+Response:
 ```json
 {
   "name": "OpenClaw Agent",
@@ -68,7 +107,7 @@ Réponse :
 }
 ```
 
-### RPC A2A
+### A2A RPC
 
 ```
 POST /a2a
@@ -76,7 +115,7 @@ POST /a2a
 
 #### tasks/send
 
-Envoyer une tâche à l'agent :
+Send a task to the agent:
 
 ```json
 {
@@ -96,7 +135,7 @@ Envoyer une tâche à l'agent :
 
 #### tasks/get
 
-Récupérer le statut d'une tâche :
+Get task status:
 
 ```json
 {
@@ -109,7 +148,7 @@ Récupérer le statut d'une tâche :
 
 #### tasks/cancel
 
-Annuler une tâche :
+Cancel a task:
 
 ```json
 {
@@ -120,13 +159,15 @@ Annuler une tâche :
 }
 ```
 
-## Exemple d'utilisation avec curl
+## Usage Examples
+
+### Using curl
 
 ```bash
-# Récupérer l'AgentCard
+# Get AgentCard
 curl https://gateway.example.com/.well-known/agent.json
 
-# Envoyer une tâche
+# Send a task
 curl -X POST https://gateway.example.com/a2a \
   -H "Content-Type: application/json" \
   -d '{
@@ -142,7 +183,7 @@ curl -X POST https://gateway.example.com/a2a \
     "id": "1"
   }'
 
-# Récupérer le statut
+# Get task status
 curl -X POST https://gateway.example.com/a2a \
   -H "Content-Type: application/json" \
   -d '{
@@ -153,60 +194,102 @@ curl -X POST https://gateway.example.com/a2a \
   }'
 ```
 
-## Développement
+### Using the A2A Client
 
-### Structure du projet
+```typescript
+import { createA2AClient } from '@openclaw/a2a';
+
+const client = createA2AClient('https://gateway.example.com');
+
+// Send a task
+const task = await client.sendTask({
+  id: 'task-1',
+  message: {
+    role: 'user',
+    parts: [{ type: 'text', text: 'Hello, agent!' }]
+  }
+});
+
+// Get task status
+const status = await client.getTask('task-1');
+```
+
+## Development
+
+### Project Structure
 
 ```
 extensions/a2a/
-├── openclaw.plugin.json   # Manifest du plugin
-├── package.json           # Dépendances
-├── tsconfig.json          # Configuration TypeScript
-├── vitest.config.ts       # Configuration des tests
-├── index.ts               # Point d'entrée du plugin
+├── openclaw.plugin.json   # Plugin manifest
+├── package.json           # Dependencies
+├── tsconfig.json          # TypeScript configuration
+├── vitest.config.ts       # Test configuration
+├── index.ts               # Plugin entry point
 ├── src/
-│   ├── models.ts          # Schémas Zod A2A
-│   ├── rpc-handler.ts     # Gestionnaire JSON-RPC
-│   ├── task-manager.ts    # Gestion du cycle de vie des tâches
-│   ├── client.ts          # Client HTTP A2A
-│   └── integration.ts     # Intégration avec OpenClaw
+│   ├── models.ts          # Zod schemas for A2A
+│   ├── rpc-handler.ts     # JSON-RPC handler
+│   ├── task-manager.ts    # Task lifecycle management
+│   ├── client.ts          # A2A HTTP client
+│   └── integration.ts     # OpenClaw integration
 └── tests/
-    ├── models.test.ts     # Tests des modèles
-    ├── rpc-handler.test.ts # Tests du handler RPC
-    ├── task-manager.test.ts # Tests du task manager
-    └── integration.test.ts # Tests d'intégration
+    ├── models.test.ts     # Model tests
+    ├── rpc-handler.test.ts # RPC handler tests
+    ├── task-manager.test.ts # Task manager tests
+    └── integration.test.ts # Integration tests
 ```
 
-### Commandes
+### Commands
 
 ```bash
-# Installer les dépendances
+# Install dependencies
 pnpm install
 
-# Lancer les tests
+# Run tests
 pnpm test
 
-# Lancer les tests avec couverture
+# Run tests with coverage
 pnpm test:coverage
 
 # Build
 pnpm build
 ```
 
-## Tests
+## Testing
 
-74 tests répartis en :
-- **39 tests** : Modèles et validation Zod
-- **11 tests** : Handler RPC
-- **15 tests** : Task Manager
-- **9 tests** : Intégration
+74 tests covering:
+- **39 tests**: Models and Zod validation
+- **11 tests**: RPC handler
+- **15 tests**: Task Manager
+- **9 tests**: Integration
 
-Pour lancer les tests :
+Run tests:
 ```bash
 cd extensions/a2a
 pnpm test
 ```
 
+Test output:
+```
+✓ tests/models.test.ts (39 tests)
+✓ tests/rpc-handler.test.ts (11 tests)
+✓ tests/task-manager.test.ts (15 tests)
+✓ tests/integration.test.ts (9 tests)
+
+Test Files 4 passed (4)
+Tests 74 passed (74)
+```
+
 ## License
 
 MIT
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+- Tests pass (`pnpm test`)
+- Code follows existing style
+- Documentation is updated
+
+## Support
+
+For issues and feature requests, please use the [GitHub Issues](https://github.com/swoelffel/OpenClaw-a2a/issues).
