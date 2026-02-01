@@ -6,13 +6,13 @@
   "scripts": {
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build": "tsc --outDir . --module commonjs --target ES2022 --esModuleInterop --resolveJsonModule src/*.ts"
   },
   "dependencies": {
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "openclaw": "workspace:*",
     "vitest": "^4.0.0"
   },
   "openclaw": {

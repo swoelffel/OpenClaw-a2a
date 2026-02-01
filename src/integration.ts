@@ -191,7 +191,7 @@ export function initializeA2AExtension(api?: OpenClawPluginApi): void {
   }
 
   // OpenClaw integrated mode
-  const pluginConfig = api.pluginConfig as A2AConfig | undefined;
+  const pluginConfig = api.pluginConfig as unknown as A2AConfig | undefined;
   
   if (!pluginConfig?.enabled) {
     api.logger.info('A2A Protocol extension disabled');
