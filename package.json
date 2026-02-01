@@ -7,17 +7,19 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "build": "tsc --outDir . --module commonjs --target ES2022 --esModuleInterop --resolveJsonModule src/*.ts"
+    "build": "tsc --outDir dist --module commonjs --target ES2022 --esModuleInterop --resolveJsonModule src/*.ts",
+    "build:clean": "rm -rf dist && tsc --outDir dist --module commonjs --target ES2022 --esModuleInterop --resolveJsonModule src/*.ts && cp index.ts dist/index.ts"
   },
   "dependencies": {
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "@types/node": "^20.0.0"
   },
   "openclaw": {
     "extensions": [
-      "./index.ts"
+      "./dist/index.js"
     ]
   }
 }

@@ -8,7 +8,7 @@
  * - POST /a2a                    : Endpoint JSON-RPC A2A
  */
 
-import type { IncomingMessage, ServerResponse } from "node:http";
+import type { IncomingMessage, ServerResponse } from "http";
 import type { AgentCard, JSONRPCResponse } from "./models.js";
 import { handleRPC } from "./rpc-handler.js";
 import { initializeA2AExtension, getA2AHandler, type A2AConfig, type OpenClawPluginApi } from "./integration.js";
@@ -46,7 +46,7 @@ interface OpenClawPluginApiStub {
 }
 
 export default function register(api: OpenClawPluginApiStub): void {
-  const config = api.pluginConfig as A2AExtensionState | undefined;
+  const config = api.pluginConfig as unknown as A2AExtensionState | undefined;
   
   if (!config?.enabled) {
     api.logger.info('A2A Protocol extension disabled');
