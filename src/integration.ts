@@ -74,7 +74,9 @@ export class OpenClawTaskHandler {
 
   constructor(config: A2AConfig, runtime?: PluginRuntime) {
     this.config = config;
-    this.runtime = runtime;
+    if (runtime !== undefined) {
+      this.runtime = runtime;
+    }
   }
 
   async handle(a2aMessage: Message): Promise<{ response: Message; artifacts?: Artifact[] }> {
@@ -179,7 +181,6 @@ export function initializeA2AExtension(api?: OpenClawPluginApi): void {
     const config: A2AConfig = {
       enabled: true,
       port: 0,
-      authToken: undefined,
       agentName: 'OpenClaw A2A Agent (Standalone)',
       agentDescription: 'A2A Protocol Agent running in standalone mode',
       skills: [],
@@ -201,11 +202,14 @@ export function initializeA2AExtension(api?: OpenClawPluginApi): void {
   const config: A2AConfig = {
     enabled: true,
     port: pluginConfig.port || 0,
-    authToken: pluginConfig.authToken,
     agentName: pluginConfig.agentName || 'OpenClaw Agent',
     agentDescription: pluginConfig.agentDescription || 'OpenClaw AI Agent with A2A support',
     skills: pluginConfig.skills || [],
   };
+  
+  if (pluginConfig.authToken) {
+    config.authToken = pluginConfig.authToken;
+  }
 
   a2aHandler = new OpenClawTaskHandler(config, api.runtime);
   taskManager.setHandler((message) => a2aHandler!.handle(message));

@@ -53,6 +53,9 @@ export default function register(api: OpenClawPluginApiStub): void {
     return;
   }
 
+  // After this point, config is guaranteed to be defined (early return above)
+  const a2aConfig = config as A2AExtensionState;
+
   // Initialize with OpenClaw runtime
   initializeA2AExtension(api as unknown as OpenClawPluginApi);
 
@@ -61,14 +64,14 @@ export default function register(api: OpenClawPluginApiStub): void {
 
   function buildAgentCard(): AgentCard {
     const cfg = api.config;
-    const port = config.port || 18789;
+    const port = a2aConfig.port || 18789;
     const host = cfg.network?.host || 'localhost';
     const protocol = cfg.network?.tls?.enabled ? 'https' : 'http';
     const url = `${protocol}://${host}:${port}`;
 
     return {
-      name: config.agentName,
-      description: config.agentDescription,
+      name: a2aConfig.agentName,
+      description: a2aConfig.agentDescription,
       url: `${url}${basePath}`,
       version: '1.0.0',
       capabilities: {
@@ -78,7 +81,7 @@ export default function register(api: OpenClawPluginApiStub): void {
       },
       defaultInputModes: ['text'],
       defaultOutputModes: ['text'],
-      skills: config.skills.map(skill => ({
+      skills: a2aConfig.skills.map(skill => ({
         id: skill.id,
         name: skill.name,
         description: skill.description,
@@ -105,7 +108,7 @@ export default function register(api: OpenClawPluginApiStub): void {
         return;
       }
 
-      if (config.authToken) {
+      if (a2aConfig.authToken) {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -113,7 +116,7 @@ export default function register(api: OpenClawPluginApiStub): void {
           return;
         }
         const token = authHeader.slice(7);
-        if (token !== config.authToken) {
+        if (token !== a2aConfig.authToken) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Forbidden' }));
           return;
