@@ -1,0 +1,79 @@
+{
+  "id": "a2a",
+  "name": "A2A Protocol",
+  "description": "Agent-to-Agent protocol for P2P communication between AI agents",
+  "uiHints": {
+    "enabled": {
+      "label": "Enable A2A Protocol",
+      "help": "Enable the A2A endpoint for agent-to-agent communication"
+    },
+    "port": {
+      "label": "A2A Port",
+      "help": "Port for the A2A HTTP server (use 0 for same as gateway)",
+      "advanced": true
+    },
+    "authToken": {
+      "label": "Authentication Token",
+      "help": "Bearer token for authenticating A2A requests",
+      "sensitive": true
+    },
+    "agentName": {
+      "label": "Agent Name",
+      "help": "Name displayed in the A2A AgentCard"
+    },
+    "agentDescription": {
+      "label": "Agent Description",
+      "help": "Description displayed in the A2A AgentCard"
+    },
+    "skills": {
+      "label": "Skills",
+      "help": "List of skills exposed via A2A",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean"
+      },
+      "port": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 65535,
+        "description": "Port for A2A server (0 = same as gateway)"
+      },
+      "authToken": {
+        "type": "string",
+        "description": "Bearer token for authentication"
+      },
+      "agentName": {
+        "type": "string",
+        "description": "Agent name displayed in AgentCard"
+      },
+      "agentDescription": {
+        "type": "string",
+        "description": "Agent description displayed in AgentCard"
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
