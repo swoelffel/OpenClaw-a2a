@@ -6,31 +6,67 @@ OpenClaw extension for agent-to-agent communication using the Google A2A Protoco
 
 ### Prerequisites
 
-- Node.js 22+ (same as OpenClaw)
-- pnpm package manager
-- OpenClaw installed and configured
+- OpenClaw installed and configured (v2026.1.0+)
+- curl (for the install script)
+- tar (to extract the archive)
 
-### Install as OpenClaw Extension
+> **For OpenClaw agents**: See [AGENT-INSTALL.md](AGENT-INSTALL.md) for instructions optimized for automated installation.
 
-1. **Clone the extension** into your OpenClaw extensions directory:
+### Quick Install (Recommended)
 
-```bash
-cd /path/to/openclaw/extensions
-git clone https://github.com/swoelffel/OpenClaw-a2a.git a2a
-```
-
-2. **Install dependencies**:
+Automatically install from the latest GitHub release:
 
 ```bash
-cd a2a
-pnpm install
+curl -fsSL https://raw.githubusercontent.com/swoelffel/OpenClaw-a2a/main/scripts/install-a2a.sh | bash
 ```
 
-3. **Enable the extension** in your OpenClaw configuration (see Configuration section below).
+Or with a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/swoelffel/OpenClaw-a2a/main/scripts/install-a2a.sh | bash -s v0.1.0
+```
+
+### Install from Release (Manual)
+
+1. **Download the latest release** from [GitHub Releases](https://github.com/swoelffel/OpenClaw-a2a/releases)
+
+2. **Extract the archive** to the OpenClaw extensions directory:
+
+```bash
+# Create the extensions directory
+mkdir -p ~/.openclaw/extensions/a2a
+
+# Extract the archive
+tar -xzf openclaw-a2a-extension.tar.gz -C ~/.openclaw/extensions/a2a/
+```
+
+3. **Enable the extension** in your OpenClaw configuration (see Configuration section).
 
 4. **Restart OpenClaw gateway**:
 
 ```bash
+openclaw gateway restart
+```
+
+### Install from Source (Development)
+
+For developers or if you want to modify the extension:
+
+```bash
+# Clone the repository
+git clone https://github.com/swoelffel/OpenClaw-a2a.git
+cd OpenClaw-a2a
+
+# Install dependencies
+npm install
+
+# Build the extension
+npm run build
+
+# Copy to OpenClaw extensions
+cp -r dist openclaw.plugin.json package.json ~/.openclaw/extensions/a2a/
+
+# Restart the gateway
 openclaw gateway restart
 ```
 
@@ -297,7 +333,7 @@ pnpm build
 openclaw gateway restart
 
 # Test
-curl https://swo95bot.woelffel.com/.well-known/agent.json
+curl http://localhost:18789/.well-known/agent.json
 ```
 
 ## Testing

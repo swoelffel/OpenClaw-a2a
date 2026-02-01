@@ -3,21 +3,54 @@
   "version": "0.1.0",
   "description": "OpenClaw A2A Protocol extension for agent-to-agent communication",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:clean": "rm -rf dist && npm run build",
+    "clean": "rm -rf dist",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "build": "tsc --outDir . --module commonjs --target ES2022 --esModuleInterop --resolveJsonModule src/*.ts"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build:clean && npm test"
   },
   "dependencies": {
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "typescript": "^5.3.0",
     "vitest": "^4.0.0"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.1.0"
   },
   "openclaw": {
     "extensions": [
-      "./index.ts"
+      "./dist/index.js"
     ]
-  }
+  },
+  "keywords": [
+    "openclaw",
+    "extension",
+    "a2a",
+    "agent",
+    "protocol"
+  ],
+  "author": "Swo95",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swoelffel/OpenClaw-a2a.git"
+  },
+  "bugs": {
+    "url": "https://github.com/swoelffel/OpenClaw-a2a/issues"
+  },
+  "homepage": "https://github.com/swoelffel/OpenClaw-a2a#readme"
 }
