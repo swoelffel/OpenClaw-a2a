@@ -12,10 +12,21 @@ import {
   TaskSendParamsSchema,
   TaskGetParamsSchema,
   TaskCancelParamsSchema,
+  TaskSendSubscribeParamsSchema,
+  TaskListParamsSchema,
   type JSONRPCRequest,
-  type JSONRPCResponse
+  type JSONRPCResponse,
+  type TaskSendSubscribeParams
 } from './models.js';
 import { taskManager } from './task-manager.js';
+
+// Marker for SSE stream responses
+export const SSE_STREAM_MARKER = '__sse_stream__';
+
+export interface SSEStreamResponse extends JSONRPCResponse {
+  [SSE_STREAM_MARKER]: true;
+  params: TaskSendSubscribeParams;
+}
 
 // ============================================================================
 // ERROR CODES (JSON-RPC 2.0 + A2A)
@@ -129,11 +140,66 @@ async function handleTaskCancel(params: unknown): Promise<JSONRPCResponse> {
   };
 }
 
+/**
+ * Handle tasks/sendSubscribe - returns SSE marker for streaming response
+ */
+async function handleTaskSendSubscribe(params: unknown): Promise<JSONRPCResponse | SSEStreamResponse> {
+  const parseResult = TaskSendSubscribeParamsSchema.safeParse(params);
+  
+  if (!parseResult.success) {
+    return {
+      jsonrpc: '2.0',
+      error: {
+        code: ErrorCodes.INVALID_PARAMS,
+        message: 'Invalid task sendSubscribe parameters',
+        data: parseResult.error.issues
+      },
+      id: undefined
+    };
+  }
+
+  // Return SSE marker - the HTTP layer will handle actual streaming
+  return {
+    jsonrpc: '2.0',
+    result: null,
+    id: undefined,
+    [SSE_STREAM_MARKER]: true,
+    params: parseResult.data
+  } as SSEStreamResponse;
+}
+
+/**
+ * Handle tasks/list - list tasks with pagination
+ */
+async function handleTaskList(params: unknown): Promise<JSONRPCResponse> {
+  const parseResult = TaskListParamsSchema.safeParse(params || {});
+  
+  if (!parseResult.success) {
+    return {
+      jsonrpc: '2.0',
+      error: {
+        code: ErrorCodes.INVALID_PARAMS,
+        message: 'Invalid task list parameters',
+        data: parseResult.error.issues
+      },
+      id: undefined
+    };
+  }
+
+  const result = taskManager.listTasks(parseResult.data);
+  
+  return {
+    jsonrpc: '2.0',
+    result,
+    id: undefined
+  };
+}
+
 // ============================================================================
 // MAIN HANDLER
 // ============================================================================
 
-export async function handleRPC(request: unknown): Promise<JSONRPCResponse> {
+export async function handleRPC(request: unknown): Promise<JSONRPCResponse | SSEStreamResponse> {
   const parseResult = JSONRPCRequestSchema.safeParse(request);
   
   if (!parseResult.success) {
@@ -150,17 +216,23 @@ export async function handleRPC(request: unknown): Promise<JSONRPCResponse> {
 
   const { method, params, id } = parseResult.data;
 
-  let response: JSONRPCResponse;
+  let response: JSONRPCResponse | SSEStreamResponse;
   
   switch (method) {
     case 'tasks/send':
       response = await handleTaskSend(params);
+      break;
+    case 'tasks/sendSubscribe':
+      response = await handleTaskSendSubscribe(params);
       break;
     case 'tasks/get':
       response = await handleTaskGet(params);
       break;
     case 'tasks/cancel':
       response = await handleTaskCancel(params);
+      break;
+    case 'tasks/list':
+      response = await handleTaskList(params);
       break;
     default:
       response = {
