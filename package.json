@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "description": "OpenClaw A2A Protocol extension for agent-to-agent communication",
   "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
   "dependencies": {
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "openclaw": "workspace:*"
+    "openclaw": "workspace:*",
+    "vitest": "^4.0.0"
   },
   "openclaw": {
     "extensions": [
