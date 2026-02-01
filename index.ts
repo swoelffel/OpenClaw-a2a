@@ -8,11 +8,10 @@
  * - POST /a2a                    : Endpoint JSON-RPC A2A
  */
 
-import type { OpenClawPluginApi } from "../../plugins/types.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AgentCard, JSONRPCResponse } from "./models.js";
 import { handleRPC } from "./rpc-handler.js";
-import { initializeA2AExtension, getA2AHandler, type A2AConfig } from "./integration.js";
+import { initializeA2AExtension, getA2AHandler, type A2AConfig, type OpenClawPluginApi } from "./integration.js";
 
 interface A2AExtensionState {
   enabled: boolean;
@@ -23,7 +22,30 @@ interface A2AExtensionState {
   skills: Array<{ id: string; name: string; description: string }>;
 }
 
-export default function register(api: OpenClawPluginApi): void {
+// Stub type for OpenClaw API - will be properly typed when loaded by OpenClaw
+interface OpenClawPluginApiStub {
+  id: string;
+  name: string;
+  version?: string;
+  description?: string;
+  source: string;
+  config: {
+    network?: {
+      host?: string;
+      tls?: { enabled?: boolean };
+    };
+  };
+  pluginConfig?: Record<string, unknown>;
+  logger: {
+    info: (message: string) => void;
+    error: (message: string) => void;
+    warn: (message: string) => void;
+  };
+  registerHttpRoute: (params: { path: string; handler: (req: IncomingMessage, res: ServerResponse) => Promise<void> | void }) => void;
+  registerService: (service: { id: string; start: () => void | Promise<void>; stop?: () => void | Promise<void> }) => void;
+}
+
+export default function register(api: OpenClawPluginApiStub): void {
   const config = api.pluginConfig as A2AExtensionState | undefined;
   
   if (!config?.enabled) {
@@ -31,7 +53,8 @@ export default function register(api: OpenClawPluginApi): void {
     return;
   }
 
-  initializeA2AExtension(api);
+  // Initialize with OpenClaw runtime
+  initializeA2AExtension(api as unknown as OpenClawPluginApi);
 
   const basePath = '/a2a';
   const agentCardPath = '/.well-known/agent.json';

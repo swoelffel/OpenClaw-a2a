@@ -3,15 +3,15 @@
  * 
  * Connexion entre le Task Manager A2A et le runtime OpenClaw
  * pour traiter les tâches via le système de messaging existant.
+ * 
+ * This file handles both standalone mode and OpenClaw-integrated mode.
  */
 
-import type { MsgContext } from "../../auto-reply/templating.js";
-import type { OpenClawPluginApi } from "../../plugins/types.js";
-import type { PluginRuntime } from "../../plugins/runtime/types.js";
-import type { TaskHandler, Message, Artifact, TextPart } from "./models.js";
-import { taskManager } from "./task-manager.js";
+import type { Message, Artifact, TextPart } from "./models.js";
+import { taskManager, type TaskHandler } from "./task-manager.js";
 import { TextPartSchema } from "./models.js";
 
+// Type definitions for OpenClaw integration (optional)
 interface A2AConfig {
   enabled: boolean;
   port: number;
@@ -21,14 +21,60 @@ interface A2AConfig {
   skills: Array<{ id: string; name: string; description: string }>;
 }
 
-export class OpenClawTaskHandler implements TaskHandler {
-  private runtime: PluginRuntime;
+// Stub types for OpenClaw integration - these will be properly typed when loaded by OpenClaw
+interface MsgContext {
+  Body?: string;
+  BodyForAgent?: string;
+  RawBody?: string;
+  CommandBody?: string;
+  From?: string;
+  To?: string;
+  SessionKey?: string;
+  Provider?: string;
+  Surface?: string;
+  ConversationLabel?: string;
+  Timestamp?: number;
+  CommandAuthorized?: boolean;
+  [key: string]: unknown;
+}
+
+interface PluginRuntime {
+  config: {
+    loadConfig: () => Record<string, unknown>;
+  };
+  channel: {
+    reply: {
+      dispatchReplyWithBufferedBlockDispatcher: (params: {
+        ctx: MsgContext;
+        cfg: Record<string, unknown>;
+        dispatcherOptions: {
+          provider: string;
+          to: string;
+          enrichedContext: MsgContext;
+        };
+      }) => Promise<{ queuedFinal?: Array<{ text: string }> }>;
+    };
+  };
+}
+
+interface OpenClawPluginApi {
+  id: string;
+  pluginConfig?: Record<string, unknown>;
+  runtime: PluginRuntime;
+  logger: {
+    info: (message: string) => void;
+    error: (message: string) => void;
+  };
+}
+
+export class OpenClawTaskHandler {
+  private runtime?: PluginRuntime;
   private config: A2AConfig;
   private agentId: string = "default";
 
-  constructor(runtime: PluginRuntime, config: A2AConfig) {
-    this.runtime = runtime;
+  constructor(config: A2AConfig, runtime?: PluginRuntime) {
     this.config = config;
+    this.runtime = runtime;
   }
 
   async handle(a2aMessage: Message): Promise<{ response: Message; artifacts?: Artifact[] }> {
@@ -43,10 +89,20 @@ export class OpenClawTaskHandler implements TaskHandler {
       };
     }
 
-    const ctx = this.createMsgContext(a2aMessage, textContent);
-    const cfg = this.runtime.config.loadConfig();
+    // If no OpenClaw runtime, return a mock response for testing
+    if (!this.runtime) {
+      return {
+        response: {
+          role: 'agent',
+          parts: [{ type: 'text', text: `Received: ${textContent}` }]
+        }
+      };
+    }
 
+    const ctx = this.createMsgContext(a2aMessage, textContent);
+    
     try {
+      const cfg = this.runtime.config.loadConfig();
       const result = await this.runtime.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
         ctx,
         cfg,
@@ -116,7 +172,25 @@ export class OpenClawTaskHandler implements TaskHandler {
 
 let a2aHandler: OpenClawTaskHandler | null = null;
 
-export function initializeA2AExtension(api: OpenClawPluginApi): void {
+export function initializeA2AExtension(api?: OpenClawPluginApi): void {
+  // Standalone mode - no OpenClaw runtime
+  if (!api) {
+    console.log('A2A Protocol extension running in standalone mode');
+    const config: A2AConfig = {
+      enabled: true,
+      port: 0,
+      authToken: undefined,
+      agentName: 'OpenClaw A2A Agent (Standalone)',
+      agentDescription: 'A2A Protocol Agent running in standalone mode',
+      skills: [],
+    };
+    
+    a2aHandler = new OpenClawTaskHandler(config);
+    taskManager.setHandler((message) => a2aHandler!.handle(message));
+    return;
+  }
+
+  // OpenClaw integrated mode
   const pluginConfig = api.pluginConfig as A2AConfig | undefined;
   
   if (!pluginConfig?.enabled) {
@@ -133,8 +207,8 @@ export function initializeA2AExtension(api: OpenClawPluginApi): void {
     skills: pluginConfig.skills || [],
   };
 
-  a2aHandler = new OpenClawTaskHandler(api.runtime, config);
-  taskManager.setHandler(a2aHandler);
+  a2aHandler = new OpenClawTaskHandler(config, api.runtime);
+  taskManager.setHandler((message) => a2aHandler!.handle(message));
 
   api.logger.info(`A2A Protocol extension initialized: ${config.agentName}`);
 }
@@ -143,4 +217,4 @@ export function getA2AHandler(): OpenClawTaskHandler | null {
   return a2aHandler;
 }
 
-export type { A2AConfig };
+export type { A2AConfig, PluginRuntime, OpenClawPluginApi };
