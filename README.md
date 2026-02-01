@@ -250,8 +250,54 @@ pnpm test
 # Run tests with coverage
 pnpm test:coverage
 
-# Build
+# Build (compile TypeScript to JavaScript)
 pnpm build
+```
+
+### Development & Testing Workflow
+
+The development workspace is separate from the OpenClaw extensions directory.
+
+#### 1. Development (in workspace)
+
+```bash
+cd ~/Projects/a2a
+
+# Make changes to TypeScript files
+# Run tests
+pnpm test
+
+# Build to generate .js files
+pnpm build
+
+# Commit and push
+git add .
+git commit -m "fix: description"
+git push origin main
+```
+
+#### 2. Testing (in OpenClaw extensions)
+
+```bash
+# Remove old version
+rm -rf ~/.npm-global/lib/node_modules/openclaw/extensions/a2a
+
+# Clone fresh from GitHub
+cd ~/.npm-global/lib/node_modules/openclaw/extensions
+git clone https://github.com/swoelffel/OpenClaw-a2a.git a2a
+
+# Install dependencies
+cd a2a
+pnpm install
+
+# Build the extension
+pnpm build
+
+# Restart OpenClaw gateway
+openclaw gateway restart
+
+# Test
+curl https://swo95bot.woelffel.com/.well-known/agent.json
 ```
 
 ## Testing
