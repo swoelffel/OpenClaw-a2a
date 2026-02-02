@@ -13,13 +13,13 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "build:clean": "rm -rf dist && npm run build",
+    "build:clean": "rm -rf dist && pnpm run build",
     "clean": "rm -rf dist",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm run build:clean && npm test"
+    "prepare": "pnpm run build",
+    "prepublishOnly": "pnpm run build:clean && pnpm test"
   },
   "dependencies": {
     "zod": "^3.22.4"
