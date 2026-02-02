@@ -18,12 +18,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-        cache: 'pnpm'
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10
+    - name: Enable corepack and install pnpm
+      run: |
+        corepack enable
+        corepack prepare pnpm@10 --activate
 
     - name: Install dependencies
       run: pnpm install
@@ -46,12 +45,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-        cache: 'pnpm'
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10
+    - name: Enable corepack and install pnpm
+      run: |
+        corepack enable
+        corepack prepare pnpm@10 --activate
 
     - name: Install dependencies
       run: pnpm install
@@ -96,13 +94,12 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-        cache: 'pnpm'
         registry-url: 'https://registry.npmjs.org'
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10
+    - name: Enable corepack and install pnpm
+      run: |
+        corepack enable
+        corepack prepare pnpm@10 --activate
 
     - name: Install dependencies
       run: pnpm install
