@@ -9,8 +9,9 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "http";
-import type { AgentCard, JSONRPCResponse } from "./models.js";
-import { handleRPC } from "./rpc-handler.js";
+import type { AgentCard, JSONRPCResponse, TaskEvent, TaskSendSubscribeParams } from "./models.js";
+import { handleRPC, SSE_STREAM_MARKER, type SSEStreamResponse } from "./rpc-handler.js";
+import { taskManager } from "./task-manager.js";
 import { initializeA2AExtension, getA2AHandler, type A2AConfig, type OpenClawPluginApi } from "./integration.js";
 
 interface A2AExtensionState {
@@ -75,7 +76,7 @@ export default function register(api: OpenClawPluginApiStub): void {
       url: `${url}${basePath}`,
       version: '1.0.0',
       capabilities: {
-        streaming: false,
+        streaming: true,  // SSE streaming via tasks/sendSubscribe
         pushNotifications: false,
         stateTransitionHistory: true,
       },
@@ -98,6 +99,54 @@ export default function register(api: OpenClawPluginApiStub): void {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to generate AgentCard' }));
     }
+  }
+
+  /**
+   * Handle SSE streaming for task subscription
+   */
+  async function handleSSEStream(
+    req: IncomingMessage,
+    res: ServerResponse,
+    params: TaskSendSubscribeParams
+  ): Promise<void> {
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+    if (typeof res.flushHeaders === 'function') {
+      res.flushHeaders();
+    }
+
+    // Create the task
+    const task = await taskManager.createTask(params);
+
+    // Send SSE event
+    const sendEvent = (event: TaskEvent) => {
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+
+    // Handler for task events
+    const eventHandler = (event: TaskEvent) => {
+      if (event.task.id === task.id) {
+        sendEvent(event);
+        
+        // Close stream when task is terminal
+        if (['completed', 'failed', 'canceled'].includes(event.task.status.state)) {
+          taskManager.off('task', eventHandler);
+          res.end();
+        }
+      }
+    };
+
+    // Subscribe to events
+    taskManager.on('task', eventHandler);
+
+    // Cleanup on connection close
+    res.on('close', () => {
+      taskManager.off('task', eventHandler);
+    });
   }
 
   async function handleRPCEndpoint(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -143,6 +192,13 @@ export default function register(api: OpenClawPluginApiStub): void {
       }
 
       const response = await handleRPC(rpcRequest);
+      
+      // Check if this is an SSE stream response
+      if (SSE_STREAM_MARKER in response && (response as SSEStreamResponse)[SSE_STREAM_MARKER]) {
+        const sseResponse = response as SSEStreamResponse;
+        return handleSSEStream(req, res, sseResponse.params);
+      }
+      
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(response));
     } catch (error) {
@@ -156,13 +212,145 @@ export default function register(api: OpenClawPluginApiStub): void {
     }
   }
 
+  // =========================================================================
+  // REST ENDPOINTS for tasks
+  // =========================================================================
+
+  /**
+   * GET /a2a/tasks - List all tasks with pagination
+   */
+  async function handleListTasks(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    try {
+      const url = new URL(req.url || '', `http://${req.headers.host}`);
+      const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+      const cursor = url.searchParams.get('cursor') || undefined;
+      const state = url.searchParams.get('state') as TaskEvent['task']['status']['state'] | undefined;
+
+      const result = taskManager.listTasks({ limit, cursor, state });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        result
+      }));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32603, message: 'Internal error' }
+      }));
+    }
+  }
+
+  /**
+   * GET /a2a/tasks/:id - Get a task by ID
+   */
+  async function handleGetTask(req: IncomingMessage, res: ServerResponse, taskId: string): Promise<void> {
+    try {
+      const task = taskManager.getTask(taskId);
+
+      if (!task) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32001, message: 'Task not found' }
+        }));
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        result: task
+      }));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32603, message: 'Internal error' }
+      }));
+    }
+  }
+
+  /**
+   * POST /a2a/tasks/:id/cancel - Cancel a task
+   */
+  async function handleCancelTask(req: IncomingMessage, res: ServerResponse, taskId: string): Promise<void> {
+    try {
+      const success = taskManager.cancelTask(taskId);
+
+      if (!success) {
+        const task = taskManager.getTask(taskId);
+        if (!task) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: { code: -32001, message: 'Task not found' }
+          }));
+        } else {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: { code: -32002, message: `Task cannot be canceled in state: ${task.status.state}` }
+          }));
+        }
+        return;
+      }
+
+      const task = taskManager.getTask(taskId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        result: task
+      }));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32603, message: 'Internal error' }
+      }));
+    }
+  }
+
   async function handleA2ARequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (req.url === agentCardPath && req.method === 'GET') {
+    const url = req.url || '';
+    
+    // Agent card
+    if (url === agentCardPath && req.method === 'GET') {
       return handleAgentCard(req, res);
     }
-    if (req.url === basePath && req.method === 'POST') {
+    
+    // JSON-RPC endpoint
+    if (url === basePath && req.method === 'POST') {
       return handleRPCEndpoint(req, res);
     }
+    
+    // REST: List tasks
+    if (url.startsWith(`${basePath}/tasks`) && req.method === 'GET') {
+      const taskIdMatch = url.match(/\/a2a\/tasks\/([^/]+)$/);
+      if (taskIdMatch && taskIdMatch[1]) {
+        return handleGetTask(req, res, taskIdMatch[1]);
+      }
+      if (url === `${basePath}/tasks` || url.startsWith(`${basePath}/tasks?`)) {
+        return handleListTasks(req, res);
+      }
+    }
+    
+    // REST: Cancel task
+    const cancelMatch = url.match(/\/a2a\/tasks\/([^/]+)\/cancel$/);
+    if (cancelMatch && cancelMatch[1] && req.method === 'POST') {
+      return handleCancelTask(req, res, cancelMatch[1]);
+    }
+    
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));
   }

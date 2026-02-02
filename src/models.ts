@@ -170,6 +170,30 @@ export const TaskCancelParamsSchema = z.object({
   id: z.string()
 });
 
+export const TaskSendSubscribeParamsSchema = z.object({
+  id: z.string(),
+  sessionId: z.string().optional(),
+  acceptedOutputModes: z.array(z.string()).optional(),
+  message: MessageSchema
+});
+
+export const TaskListParamsSchema = z.object({
+  limit: z.number().int().positive().max(100).default(50),
+  cursor: z.string().optional(),
+  state: TaskStateSchema.optional()
+});
+
+// ============================================================================
+// TASK EVENTS (for SSE streaming)
+// ============================================================================
+
+export const TaskEventSchema = z.object({
+  type: z.enum(['status', 'artifact', 'message']),
+  task: TaskSchema,
+  artifact: ArtifactSchema.optional(),
+  message: MessageSchema.optional()
+});
+
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
@@ -191,3 +215,6 @@ export type JSONRPCResponse = z.infer<typeof JSONRPCResponseSchema>;
 export type TaskSendParams = z.infer<typeof TaskSendParamsSchema>;
 export type TaskGetParams = z.infer<typeof TaskGetParamsSchema>;
 export type TaskCancelParams = z.infer<typeof TaskCancelParamsSchema>;
+export type TaskSendSubscribeParams = z.infer<typeof TaskSendSubscribeParamsSchema>;
+export type TaskListParams = z.infer<typeof TaskListParamsSchema>;
+export type TaskEvent = z.infer<typeof TaskEventSchema>;
