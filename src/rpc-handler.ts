@@ -120,14 +120,24 @@ async function handleTaskCancel(params: unknown): Promise<JSONRPCResponse> {
     };
   }
 
-  const success = taskManager.cancelTask(parseResult.data.id);
+  const result = taskManager.cancelTask(parseResult.data.id);
   
-  if (!success) {
+  if (!result.success) {
+    if (result.reason === 'not_found') {
+      return {
+        jsonrpc: '2.0',
+        error: {
+          code: ErrorCodes.TASK_NOT_FOUND,
+          message: `Task not found: ${parseResult.data.id}`
+        },
+        id: undefined
+      };
+    }
     return {
       jsonrpc: '2.0',
       error: {
         code: ErrorCodes.TASK_CANNOT_BE_CANCELED,
-        message: `Task cannot be canceled: ${parseResult.data.id}`
+        message: `Task cannot be canceled: ${parseResult.data.id} (current state: ${result.state})`
       },
       id: undefined
     };
