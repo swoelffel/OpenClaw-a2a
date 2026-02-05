@@ -282,11 +282,10 @@ export default function register(api: OpenClawPluginApiStub): void {
    */
   async function handleCancelTask(req: IncomingMessage, res: ServerResponse, taskId: string): Promise<void> {
     try {
-      const success = taskManager.cancelTask(taskId);
+      const result = taskManager.cancelTask(taskId);
 
-      if (!success) {
-        const task = taskManager.getTask(taskId);
-        if (!task) {
+      if (!result.success) {
+        if (result.reason === 'not_found') {
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({
             jsonrpc: '2.0',
@@ -298,7 +297,7 @@ export default function register(api: OpenClawPluginApiStub): void {
           res.end(JSON.stringify({
             jsonrpc: '2.0',
             id: null,
-            error: { code: -32002, message: `Task cannot be canceled in state: ${task.status.state}` }
+            error: { code: -32002, message: `Task cannot be canceled (current state: ${result.state})` }
           }));
         }
         return;

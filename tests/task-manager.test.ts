@@ -153,9 +153,10 @@ describe('TaskManager', () => {
   });
 
   describe('cancelTask', () => {
-    it('should return false for non-existent task', () => {
+    it('should return not_found for non-existent task', () => {
       const result = manager.cancelTask('non-existent');
-      expect(result).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.reason).toBe('not_found');
     });
 
     it('should cancel a task without handler (stays submitted)', async () => {
@@ -170,7 +171,7 @@ describe('TaskManager', () => {
       await manager.createTask(params);
       const result = manager.cancelTask('test-task-7');
 
-      expect(result).toBe(true);
+      expect(result.success).toBe(true);
       const task = manager.getTask('test-task-7');
       expect(task!.status.state).toBe('canceled');
     });
@@ -193,7 +194,9 @@ describe('TaskManager', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       const result = manager.cancelTask('test-task-8');
-      expect(result).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.reason).toBe('terminal_state');
+      expect(result.state).toBe('completed');
     });
 
     it('should not cancel a failed task', async () => {
@@ -212,7 +215,9 @@ describe('TaskManager', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       const result = manager.cancelTask('test-task-9');
-      expect(result).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.reason).toBe('terminal_state');
+      expect(result.state).toBe('failed');
     });
   });
 

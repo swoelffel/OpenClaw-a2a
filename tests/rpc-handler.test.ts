@@ -121,8 +121,8 @@ describe('RPC Handler', () => {
       const response = await handleRPC(request);
 
       expect(response.error).toBeDefined();
-      expect(response.error!.code).toBe(-32002);
-      expect(response.error!.message).toContain('cannot be canceled');
+      expect(response.error!.code).toBe(-32001);
+      expect(response.error!.message).toContain('not found');
     });
 
     it('should return error for unknown method', async () => {

@@ -32,7 +32,16 @@ export const FilePartSchema = z.object({
   ])
 });
 
-export const PartSchema = z.any();
+export const DataPartSchema = z.object({
+  type: z.literal('data'),
+  data: z.record(z.string(), z.unknown())
+});
+
+export const PartSchema = z.discriminatedUnion('type', [
+  TextPartSchema,
+  FilePartSchema,
+  DataPartSchema
+]);
 
 // ============================================================================
 // MESSAGE
@@ -200,6 +209,7 @@ export const TaskEventSchema = z.object({
 
 export type TextPart = z.infer<typeof TextPartSchema>;
 export type FilePart = z.infer<typeof FilePartSchema>;
+export type DataPart = z.infer<typeof DataPartSchema>;
 export type Part = z.infer<typeof PartSchema>;
 export type Message = z.infer<typeof MessageSchema>;
 export type TaskState = z.infer<typeof TaskStateSchema>;

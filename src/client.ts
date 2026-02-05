@@ -23,25 +23,41 @@ export class A2AClient {
     };
   }
   
+  private createAbortController(): { controller: AbortController; clear: () => void } {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.options.timeout);
+    return {
+      controller,
+      clear: () => clearTimeout(timeoutId)
+    };
+  }
+
   async getAgentCard(): Promise<AgentCard> {
     const url = `${this.baseUrl}/.well-known/agent.json`;
+    const { controller, clear } = this.createAbortController();
     
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        signal: controller.signal
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch AgentCard: ${response.status} ${response.statusText}`);
       }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch AgentCard: ${response.status} ${response.statusText}`);
+      
+      return response.json() as Promise<AgentCard>;
+    } finally {
+      clear();
     }
-    
-    return response.json() as Promise<AgentCard>;
   }
   
   async sendTask(params: TaskSendParams): Promise<Task> {
     const requestId = crypto.randomUUID();
+    const { controller, clear } = this.createAbortController();
     
     const rpcRequest = {
       jsonrpc: '2.0' as const,
@@ -59,31 +75,37 @@ export class A2AClient {
       headers['Authorization'] = `Bearer ${this.options.authToken}`;
     }
     
-    const response = await fetch(`${this.baseUrl}/a2a`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(rpcRequest)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/a2a`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(rpcRequest),
+        signal: controller.signal
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+      }
+      
+      const rpcResponse = await response.json() as JSONRPCResponse;
+      
+      if (rpcResponse.error) {
+        throw new Error(`RPC error ${rpcResponse.error.code}: ${rpcResponse.error.message}`);
+      }
+      
+      if (!rpcResponse.result) {
+        throw new Error('RPC response missing result');
+      }
+      
+      return rpcResponse.result as Task;
+    } finally {
+      clear();
     }
-    
-    const rpcResponse = await response.json() as JSONRPCResponse;
-    
-    if (rpcResponse.error) {
-      throw new Error(`RPC error ${rpcResponse.error.code}: ${rpcResponse.error.message}`);
-    }
-    
-    if (!rpcResponse.result) {
-      throw new Error('RPC response missing result');
-    }
-    
-    return rpcResponse.result as Task;
   }
   
   async getTask(taskId: string): Promise<Task> {
     const requestId = crypto.randomUUID();
+    const { controller, clear } = this.createAbortController();
     
     const rpcRequest = {
       jsonrpc: '2.0' as const,
@@ -101,31 +123,37 @@ export class A2AClient {
       headers['Authorization'] = `Bearer ${this.options.authToken}`;
     }
     
-    const response = await fetch(`${this.baseUrl}/a2a`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(rpcRequest)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/a2a`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(rpcRequest),
+        signal: controller.signal
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+      }
+      
+      const rpcResponse = await response.json() as JSONRPCResponse;
+      
+      if (rpcResponse.error) {
+        throw new Error(`RPC error ${rpcResponse.error.code}: ${rpcResponse.error.message}`);
+      }
+      
+      if (!rpcResponse.result) {
+        throw new Error('RPC response missing result');
+      }
+      
+      return rpcResponse.result as Task;
+    } finally {
+      clear();
     }
-    
-    const rpcResponse = await response.json() as JSONRPCResponse;
-    
-    if (rpcResponse.error) {
-      throw new Error(`RPC error ${rpcResponse.error.code}: ${rpcResponse.error.message}`);
-    }
-    
-    if (!rpcResponse.result) {
-      throw new Error('RPC response missing result');
-    }
-    
-    return rpcResponse.result as Task;
   }
   
   async cancelTask(taskId: string): Promise<boolean> {
     const requestId = crypto.randomUUID();
+    const { controller, clear } = this.createAbortController();
     
     const rpcRequest = {
       jsonrpc: '2.0' as const,
@@ -143,23 +171,28 @@ export class A2AClient {
       headers['Authorization'] = `Bearer ${this.options.authToken}`;
     }
     
-    const response = await fetch(`${this.baseUrl}/a2a`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(rpcRequest)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/a2a`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(rpcRequest),
+        signal: controller.signal
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+      }
+      
+      const rpcResponse = await response.json() as JSONRPCResponse;
+      
+      if (rpcResponse.error) {
+        throw new Error(`RPC error ${rpcResponse.error.code}: ${rpcResponse.error.message}`);
+      }
+      
+      return (rpcResponse.result as { canceled: boolean })?.canceled ?? false;
+    } finally {
+      clear();
     }
-    
-    const rpcResponse = await response.json() as JSONRPCResponse;
-    
-    if (rpcResponse.error) {
-      throw new Error(`RPC error ${rpcResponse.error.code}: ${rpcResponse.error.message}`);
-    }
-    
-    return (rpcResponse.result as { canceled: boolean })?.canceled ?? false;
   }
 }
 

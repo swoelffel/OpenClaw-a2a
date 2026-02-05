@@ -2,10 +2,14 @@
  * Task Manager
  * 
  * Gestion du cycle de vie des tâches A2A :
- * - Stockage en mémoire
+ * - Stockage en mémoire (tasks are lost on restart)
  * - Transitions d'état
  * - Exécution via le runtime OpenClaw
  * - Event emission for SSE streaming
+ * 
+ * Note: Tasks are stored in memory only. Call cleanup() periodically
+ * to remove old tasks and prevent memory growth. The default retention
+ * is 24 hours.
  */
 
 import { EventEmitter } from 'events';
@@ -123,15 +127,15 @@ export class TaskManager extends EventEmitter {
     return this.tasks.get(taskId);
   }
 
-  cancelTask(taskId: string): boolean {
+  cancelTask(taskId: string): { success: true } | { success: false; reason: 'not_found' | 'terminal_state'; state?: TaskState } {
     const task = this.tasks.get(taskId);
     
     if (!task) {
-      return false;
+      return { success: false, reason: 'not_found' };
     }
 
-    if (task.status.state === 'completed' || task.status.state === 'failed') {
-      return false;
+    if (task.status.state === 'completed' || task.status.state === 'failed' || task.status.state === 'canceled') {
+      return { success: false, reason: 'terminal_state', state: task.status.state };
     }
 
     task.status = {
@@ -140,7 +144,7 @@ export class TaskManager extends EventEmitter {
     };
     this.emitTaskEvent('status', task);
 
-    return true;
+    return { success: true };
   }
 
   getAllTasks(): Task[] {
